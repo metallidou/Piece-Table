@@ -100,148 +100,215 @@ TEST_CASE("Piece Table: delete operation", "[deletion]")
     p.indexPiece(8, e, b);
     REQUIRE(e == 0);
     REQUIRE(b == 8);
-    p.erasePiece(8, 11);
+    p.erasePiece(8, 12);
     REQUIRE(p.getText() == text1);
 
     // "This is just a plain text!" -> "This is just a text!"
-    p.erasePiece(15, 20);
+    p.erasePiece(15, 21);
     REQUIRE(p.getText() == text2);
 
     // "This is just a text!" -> "This is just a text"
-    p.erasePiece(19, 19);
+    p.erasePiece(19, 20);
     REQUIRE(p.getText() == text3);
 
     // "This is just a text" -> "This is a text"
-    p.erasePiece(8, 12);
+    p.erasePiece(8, 13);
     REQUIRE(p.getText() == text4);
 
     // "This is a text" -> "a text"
-    p.erasePiece(0, 7);
+    p.erasePiece(0, 8);
     REQUIRE(p.getText() == text5);
 
     // "a text" -> "a txt"
-    p.erasePiece(3, 3);
+    p.erasePiece(3, 4);
     REQUIRE(p.getText() == text6);
 
     // "a txt" -> " txt"
-    p.erasePiece(0, 0);
+    p.erasePiece(0, 1);
     REQUIRE(p.getText() == text7);
 
     // " txt" -> ""
-    p.erasePiece(0, p.getText().length()-1);
+    p.erasePiece(0, p.getText().length());
     REQUIRE(p.getText() == text8);
 
     // "" -> "final erase test" -> "f"
     p.insertPiece(0, text9);
     REQUIRE(p.getText() == text9);
-    p.erasePiece(1, p.getText().length()-1);
+    p.erasePiece(1, p.getText().length());
     REQUIRE(p.getText() == text10);
 }
 
-TEST_CASE("Piece Table: undo operation", "[undo]")
+TEST_CASE("Piece Table: getTextInBetween", "[getTextInBetween]")
 {
-    std::string text = "This is not just a plain text!";
-    std::string text1 = "";
-    std::string text2 = "This is just a plain text!";
-    std::string text3 = "This is just a plain text";
+    std::string text = "abcdef";
+    std::string text1 = "d";
+    std::string text2 = "";
+    std::string text3 = "ef";
     PieceTable p(text);
 
-    // "This is not just a plain text!" -> ""
+    // Entire text
+    REQUIRE(p.getTextInBetween(0, 6) == text);
+
+    // Single character
+    REQUIRE(p.getTextInBetween(3, 4) == text1);
+
+    // Zero length text
+    REQUIRE(p.getTextInBetween(2, 2) == text2);
+
+    // Out-of-bounds range
+    REQUIRE(p.getTextInBetween(4, 10) == text3);
+}
+
+TEST_CASE("Piece Table: undo-insert", "[undo]")
+{
+    std::string text = "This is an undo insert test";
+    std::string text1 = "This is an undo insert test!";
+    std::string text2 = "with ";
+    std::string text3 = "This is an undo with insert test";
+    PieceTable p(text);
+
+    // "This is an undo insert test" -> "This is an undo insert test!"
+    p.insertPiece(27, "!");
+    REQUIRE(p.getText() == text1);
+
+    // "This is an undo insert test!" -> "This is an undo insert test"
+    p.undoPiece();
+    REQUIRE(p.getText() == text);
+
+    // "This is an undo insert test" -> "This is an undo with insert test"
+    p.insertPiece(16, text2);
+    REQUIRE(p.getText() == text3);
+
+    // "This is an undo with insert test" -> "This is an undo insert test"
+    p.undoPiece();
+    REQUIRE(p.getText() == text);
+}
+
+TEST_CASE("Piece Table: undo-erase", "[undo]")
+{
+    std::string text = "abcdefg";
+    std::string text1 = "abefg";
+    std::string text2 = "cdefg";
+    std::string text3 = "abcde";
+    PieceTable p(text);
+
+    // "abcdefg" -> "abefg"
+    p.erasePiece(2, 4);
+    REQUIRE(p.getText() == text1);
+
+    // "abefg" -> "abcdefg"
+    p.undoPiece();
+    REQUIRE(p.getText() == text);
+
+    // "abcdefg" -> "cdefg"
+    p.erasePiece(0, 2);
+    REQUIRE(p.getText() == text2);
+
+    // "cdefg" -> "abcdefg"
+    p.undoPiece();
+    REQUIRE(p.getText() == text);
+
+    // "abcdefg" -> "abcde"
+    p.erasePiece(5, 7);
+    REQUIRE(p.getText() == text3);
+
+    // "abcde" -> "abcdefg"
+    p.undoPiece();
+    REQUIRE(p.getText() == text);
+}
+
+TEST_CASE("Piece Table: undo insert/erase", "[undo]")
+{
+    std::string text = "12345";
+    std::string text1 = "1AB2345";
+    std::string text2 = "AB";
+    std::string text3 = "1AB25";
+    PieceTable p(text);
+
+    // "12345" -> "1AB2345"
+    p.insertPiece(1, text2);
+    REQUIRE(p.getText() == text1);
+
+    // "1AB2345" -> "1AB25"
+    p.erasePiece(4, 6);
+    REQUIRE(p.getText() == text3);
+
+    // "1AB25" -> "1AB2345"
     p.undoPiece();
     REQUIRE(p.getText() == text1);
 
-    // "" -> "This is just a plain text!" -> "This is just a plain text" -> "This is just a plain text!"
-    p.insertPiece(0, text2);
-    p.erasePiece(25, 25);
-    REQUIRE(p.getText() == text3);
+    // "1AB2345" -> "12345"
     p.undoPiece();
-    REQUIRE(p.getText() == text3);
+    REQUIRE(p.getText() == text);
 }
 
-TEST_CASE("Piece Table: undo insert", "[undo]") {
-    std::string base = "Hello world";
-    PieceTable p(base);
+TEST_CASE("Piece Table: redo insert/erase", "[redo]")
+{
+    std::string text = "Hello";
+    std::string text1 = " World";
+    std::string text2 = "Hello World";
+    PieceTable p(text);
 
-    // Insert at end
-    p.insertPiece(11, "!");
-    REQUIRE(p.getText() == "Hello world!");
+    // "Hello" -> "Hello World"
+    p.insertPiece(5, text1);
+    REQUIRE(p.getText() == text2);
 
-    // Undo insertion
+    // "Hello World" -> "Hello"
     p.undoPiece();
-    REQUIRE(p.getText() == base);
+    REQUIRE(p.getText() == text);
 
-    // Insert in middle
-    p.insertPiece(5, ", brave new");
-    REQUIRE(p.getText() == "Hello, brave new world");
+    // "Hello" -> "Hello World"
+    p.redoPiece();
+    REQUIRE(p.getText() == text2);
 
-    // Undo insertion
+    // "Hello World" -> "Hello"
+    p.erasePiece(5, 11);
+    REQUIRE(p.getText() == text);
+
+    // "Hello" -> "Hello World"
     p.undoPiece();
-    REQUIRE(p.getText() == base);
+    REQUIRE(p.getText() == text2);
+
+    // "Hello World" -> "Hello"
+    p.redoPiece();
+    REQUIRE(p.getText() == text);
 }
 
-TEST_CASE("Piece Table: undo erase", "[undo]") {
-    std::string base = "abcdefg";
-    PieceTable p(base);
+TEST_CASE("Piece Table: undo/redo sequence", "[undo][redo]")
+{
+    std::string text = "abcde";
+    std::string text1 = "FG";
+    std::string text2 = "abcdeFG";
+    std::string text3 = "XY";
+    std::string text4 = "abXYcdeFG";
+    std::string text5 = "acdeFG";
+    PieceTable p(text);
 
-    // Erase middle ("cd")
-    p.erasePiece(2, 3);
-    REQUIRE(p.getText() == "abefg");
+    // "abcde" -> "abcdeFG"
+    p.insertPiece(5, text1);
+    REQUIRE(p.getText() == text2);
 
-    // Undo erase -> restore original
+    // "abcdeFG" -> "abXYcdeFG"
+    p.insertPiece(2, text3);
+    REQUIRE(p.getText() == text4);
+
+    // "abXYcdeFG" -> "acdeFG"
+    p.erasePiece(1, 4);
+    REQUIRE(p.getText() == text5);
+
+    // "acdeFG" -> "abXYcdeFG"
     p.undoPiece();
-    REQUIRE(p.getText() == base);
+    REQUIRE(p.getText() == text4);
 
-    // Erase at start ("ab")
-    p.erasePiece(0, 1);
-    REQUIRE(p.getText() == "cdefg");
-
-    // Undo erase
+    // "abXYcdeFG" -> "abcdeFG"
     p.undoPiece();
-    REQUIRE(p.getText() == base);
+    REQUIRE(p.getText() == text2);
 
-    // Erase at end ("fg")
-    p.erasePiece(5, 6);
-    REQUIRE(p.getText() == "abcde");
+    // "abcdeFG" -> "abXYcdeFG"
+    p.redoPiece();
+    REQUIRE(p.getText() == text4);
 
-    // Undo erase
-    p.undoPiece();
-    REQUIRE(p.getText() == base);
-}
-
-TEST_CASE("Piece Table: undo multiple operations", "[undo]") {
-    PieceTable p("12345");
-
-    // Insert "AB" after "1" -> "1AB2345"
-    p.insertPiece(1, "AB");
-    REQUIRE(p.getText() == "1AB2345");
-
-    // Erase "34" -> "1AB25"
-    p.erasePiece(4, 5);
-    REQUIRE(p.getText() == "1AB25");
-
-    // Undo erase -> back to "1AB2345"
-    p.undoPiece();
-    REQUIRE(p.getText() == "1AB2345");
-
-    // Undo insert -> back to "12345"
-    p.undoPiece();
-    REQUIRE(p.getText() == "12345");
-}
-
-TEST_CASE("Piece Table: undo consecutive inserts", "[undo]") {
-    PieceTable p("X");
-
-    p.insertPiece(1, "Y");
-    REQUIRE(p.getText() == "XY");
-
-    p.insertPiece(2, "Z");
-    REQUIRE(p.getText() == "XYZ");
-
-    // Undo last insert -> back to "XY"
-    p.undoPiece();
-    REQUIRE(p.getText() == "XY");
-
-    // Undo again -> back to "X"
-    p.undoPiece();
-    REQUIRE(p.getText() == "X");
+    // "abXYcdeFG" -> "acdeFG"
+    p.redoPiece();
+    REQUIRE(p.getText() == text5);
 }

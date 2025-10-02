@@ -28,6 +28,17 @@ std::string PieceTable::getBufferText(const Piece &piece) const
     return buffer.substr(piece.start, std::min(piece.length, buffer.size() - piece.start));
 }
 
+std::string PieceTable::takeSubStringFromPiece(const Piece& piece, unsigned long localStart, unsigned long localLength)
+{
+    const std::string &buffer = (piece.type == ORIGINAL) ? this->original_buffer : this->added_buffer;
+    // Absolute start in the underlying buffer
+    unsigned long absStart = piece.start + localStart;
+    if (localLength == 0 || absStart >= buffer.size()) return "";
+    auto maxLen = buffer.size() - absStart;
+    auto useLen = std::min(localLength, maxLen);
+    return buffer.substr(absStart, useLen);
+}
+
 std::string PieceTable::getTextInBetween(const unsigned long startIndex, const unsigned long endIndex)
 {
     unsigned long e1, p1;
@@ -35,32 +46,25 @@ std::string PieceTable::getTextInBetween(const unsigned long startIndex, const u
     unsigned long e2, p2;
     if (!indexPiece(endIndex, e2, p2)) return "";
 
-    if (e1 > e2 || p1 > p2) return "";
+    if (e1 > e2) return "";
+    if (e1 == e2 && p1 > p2) return "";
 
-    // Then return buffer from one entry
-    if (e1 == e2) {
-        return (this->piece[e1].type == ORIGINAL ?
-                    original_buffer.substr(p1, p2-p1) :
-                    added_buffer.substr(p1, p2-p1));
-    }
+    // Same piece
+    if (e1 == e2) return takeSubStringFromPiece(this->piece[e1], p1, p2 - p1);
 
-    // Return buffer from multiple entries
-    // Get buffer from first piece
-    std::string buffer = (this->piece[e1].type == ORIGINAL ?
-                            original_buffer.substr(p1, this->piece[e1].length - p1) :
-                            added_buffer.substr(p1, this->piece[e1].length - p1));
-    // Get middle buffers
-    for (auto e = e1+1; e < e2; e++) {
-        buffer += (this->piece[e].type == ORIGINAL ?
-                        original_buffer.substr(0, this->piece[e].length) :
-                        added_buffer.substr(0, this->piece[e].length));
-    }
-    // Get buffer from end piece
-    buffer += (this->piece[e2].type == ORIGINAL ?
-                    original_buffer.substr(0, p2+1) :
-                    added_buffer.substr(0, p2+1));
-    return buffer;
+    // Multiple pieces
+    std::string result;
+    // First piece: from local p1 to end of that piece
+    result += takeSubStringFromPiece(this->piece[e1], p1, this->piece[e1].length - p1);
+    // Middle full pieces
+    for (unsigned long e = e1 + 1; e < e2; e++)
+        result += takeSubStringFromPiece(this->piece[e], 0, this->piece[e].length);
+    // End piece: from piece start up to local p2
+    result += takeSubStringFromPiece(this->piece[e2], 0, p2);
+
+    return result;
 }
+
 
 Piece PieceTable::newPiece(const unsigned long startIndex, const unsigned long bufferLength, Buffer bufferType)
 {
@@ -142,6 +146,8 @@ void PieceTable::insertPiece(unsigned long textIndex, const std::string &textBuf
     if (pushToUndoStack) {
         Operations op = {INSERT, textIndex, l, textBuffer};
         undo_stack.push(op);
+        // New user action invalidates the redo stack
+        while (!redo_stack.empty()) redo_stack.pop();
     }
 }
 
@@ -154,7 +160,7 @@ void PieceTable::erasePiece(unsigned long startIndex, unsigned long endIndex, bo
     unsigned long e1, p1;
     if (!this->indexPiece(startIndex, e1, p1)) return;
     unsigned long e2, p2;
-    if (!this->indexPiece(endIndex, e2, p2)) return;
+    if (!this->indexPiece(endIndex-1, e2, p2)) return;
     p2 += 1;
 
     // Get text to be deleted
@@ -193,6 +199,8 @@ void PieceTable::erasePiece(unsigned long startIndex, unsigned long endIndex, bo
     if (pushToUndoStack) {
         Operations op = {ERASE, startIndex, buffer.length(), buffer};
         undo_stack.push(op);
+        // New user action invalidates the redo stack
+        while (!redo_stack.empty()) redo_stack.pop();
     }
 }
 
@@ -207,7 +215,7 @@ void PieceTable::undoPiece()
     auto op = undo_stack.top();
     undo_stack.pop();
     redo_stack.push(op);
-    this->performOperation(op);
+    this->performUndo(op);
 }
 
 void PieceTable::redoPiece()
@@ -215,16 +223,19 @@ void PieceTable::redoPiece()
     auto op = redo_stack.top();
     redo_stack.pop();
     undo_stack.push(op);
-    this->performOperation(op);
+    this->performRedo(op);
 }
 
-void PieceTable::performOperation(const Operations& operation)
-{
-    if (operation.type == INSERT) {
-        // Undo with an erase operation
-        erasePiece(operation.start, operation.start + operation.length - 1, false);
-    } else if (operation.type == ERASE) {
-        // Redo with an insert operation
+void PieceTable::performUndo(const Operations& operation) {
+    if (operation.type == INSERT)
+        erasePiece(operation.start, operation.start + operation.length, false);
+    else if (operation.type == ERASE)
         insertPiece(operation.start, operation.buffer, false);
-    }
+}
+
+void PieceTable::performRedo(const Operations& operation) {
+    if (operation.type == INSERT)
+        insertPiece(operation.start, operation.buffer, false);
+    else if (operation.type == ERASE)
+        erasePiece(operation.start, operation.start + operation.length, false);
 }

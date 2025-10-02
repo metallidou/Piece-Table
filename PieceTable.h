@@ -41,6 +41,7 @@ class PieceTable {
         void insertPiece(unsigned long textIndex, const std::string &textBuffer, bool pushToUndoStack = true);
         void erasePiece(unsigned long startIndex, unsigned long endIndex, bool pushToUndoStack = true);
         void replacePiece(unsigned long startIndex, unsigned long endIndex, const std::string &textBuffer);
+        std::string getTextInBetween(unsigned long startIndex, unsigned long endIndex);
         void undoPiece();
         void redoPiece();
 
@@ -51,8 +52,9 @@ class PieceTable {
         std::stack<Operations> undo_stack;
         std::stack<Operations> redo_stack;
         static Piece newPiece(unsigned long startIndex, unsigned long bufferLength, Buffer bufferType);
-        std::string getTextInBetween(unsigned long startIndex, unsigned long endIndex);
-        void performOperation(const Operations& operation);
+        std::string takeSubStringFromPiece(const Piece& piece, unsigned long localStart, unsigned long localLength);
+        void performUndo(const Operations& operation);
+        void performRedo(const Operations& operation);
 };
 
 #endif
