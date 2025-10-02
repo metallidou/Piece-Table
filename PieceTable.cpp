@@ -4,9 +4,9 @@
 PieceTable::PieceTable(const std::string &textBuffer)
 {
     Piece newpiece = newPiece(0, static_cast<int>(textBuffer.length()), ORIGINAL);
-    this->piece.push_back(newpiece);
-    this->original_buffer = textBuffer;
-    this->added_buffer = "";
+    pieces.push_back(newpiece);
+    original_buffer = textBuffer;
+    added_buffer = "";
 
     Operations op = {INSERT, 0, textBuffer.length(), textBuffer};
     undo_stack.push(op);
@@ -17,26 +17,26 @@ PieceTable::~PieceTable() = default;
 std::string PieceTable::getText()
 {
     std::string text;
-    for (const auto &p : this->piece) text += this->getBufferText(p);
+    for (const auto &p : pieces) text += getBufferText(p);
     return text;
 }
 
 std::string PieceTable::getBufferText(const Piece &piece) const
 {
-    const std::string& buffer = (piece.type == ORIGINAL) ? this->original_buffer : this->added_buffer;
+    const std::string& buffer = (piece.type == ORIGINAL) ? original_buffer : added_buffer;
     if (piece.start >= buffer.size() || piece.length == 0) return "";
     return buffer.substr(piece.start, std::min(piece.length, buffer.size() - piece.start));
 }
 
 std::string PieceTable::takeSubStringFromPiece(const Piece& piece, unsigned long localStart, unsigned long localLength)
 {
-    const std::string &buffer = (piece.type == ORIGINAL) ? this->original_buffer : this->added_buffer;
+    const std::string &buffer = (piece.type == ORIGINAL) ? original_buffer : added_buffer;
     // Absolute start in the underlying buffer
-    unsigned long absStart = piece.start + localStart;
-    if (localLength == 0 || absStart >= buffer.size()) return "";
-    auto maxLen = buffer.size() - absStart;
-    auto useLen = std::min(localLength, maxLen);
-    return buffer.substr(absStart, useLen);
+    unsigned long start = piece.start + localStart;
+    if (localLength == 0 || start >= buffer.size()) return "";
+    auto maxl= buffer.size() - start;
+    auto length = std::min(localLength, maxl);
+    return buffer.substr(start, length);
 }
 
 std::string PieceTable::getTextInBetween(const unsigned long startIndex, const unsigned long endIndex)
@@ -50,21 +50,20 @@ std::string PieceTable::getTextInBetween(const unsigned long startIndex, const u
     if (e1 == e2 && p1 > p2) return "";
 
     // Same piece
-    if (e1 == e2) return takeSubStringFromPiece(this->piece[e1], p1, p2 - p1);
+    if (e1 == e2) return takeSubStringFromPiece(pieces[e1], p1, p2 - p1);
 
     // Multiple pieces
     std::string result;
     // First piece: from local p1 to end of that piece
-    result += takeSubStringFromPiece(this->piece[e1], p1, this->piece[e1].length - p1);
+    result += takeSubStringFromPiece(pieces[e1], p1, pieces[e1].length - p1);
     // Middle full pieces
-    for (unsigned long e = e1 + 1; e < e2; e++)
-        result += takeSubStringFromPiece(this->piece[e], 0, this->piece[e].length);
+    for (unsigned long e = e1+1; e < e2; e++)
+        result += takeSubStringFromPiece(pieces[e], 0, pieces[e].length);
     // End piece: from piece start up to local p2
-    result += takeSubStringFromPiece(this->piece[e2], 0, p2);
+    result += takeSubStringFromPiece(pieces[e2], 0, p2);
 
     return result;
 }
-
 
 Piece PieceTable::newPiece(const unsigned long startIndex, const unsigned long bufferLength, Buffer bufferType)
 {
@@ -77,20 +76,20 @@ Piece PieceTable::newPiece(const unsigned long startIndex, const unsigned long b
 
 bool PieceTable::indexPiece(unsigned long bufferIndex, unsigned long &bufferEntry, unsigned long &textPosition) const
 {
-    if (this->piece.empty()) return false;
+    if (pieces.empty()) return false;
 
     unsigned long pos = 0;
-    for (size_t i = 0; i < this->piece.size(); i++) {
-        if (bufferIndex < pos + piece[i].length) {
+    for (size_t i = 0; i < pieces.size(); i++) {
+        if (bufferIndex < pos + pieces[i].length) {
             bufferEntry = i;
             textPosition = bufferIndex - pos;
             return true;
         }
-        pos += piece[i].length;
+        pos += pieces[i].length;
     }
     // If we reach here, bufferIndex == total length -> append at end
-    bufferEntry = piece.size() - 1;
-    textPosition = piece.back().length;
+    bufferEntry = pieces.size() - 1;
+    textPosition = pieces.back().length;
     return true;
 }
 
@@ -99,9 +98,8 @@ unsigned long PieceTable::indexText(unsigned long bufferEntry, unsigned long tex
     unsigned long index = 0;
     unsigned long e = 0;
 
-    while(e < bufferEntry) {
-        index += this->piece[e++].length;
-    }
+    while(e < bufferEntry)
+        index += pieces[e++].length;
     return index + textPosition;
 }
 
@@ -120,28 +118,28 @@ void PieceTable::insertPiece(unsigned long textIndex, const std::string &textBuf
 
     // Check if indexes are within bounds
     unsigned long length = 0;
-    for (const auto &p : this->piece) length += p.length;
+    for (const auto &p : pieces) length += p.length;
     if (textIndex > length) textIndex = length;
 
     unsigned long entry;
     unsigned long position;
-    if (!this->indexPiece(textIndex, entry, position)) return;
+    if (!indexPiece(textIndex, entry, position)) return;
 
-    Piece piece1 = this->piece[entry];
+    Piece piece1 = pieces[entry];
     Piece piece2{};
-    PieceTable::splitPiece(piece1, piece2, position, piece1.type);
+    splitPiece(piece1, piece2, position, piece1.type);
 
     // Replace the old piece1 with the updated one
-    this->piece[entry] = piece1;
+    pieces[entry] = piece1;
 
     // Add new text to added buffer
     auto l = textBuffer.length();
-    Piece newpiece = PieceTable::newPiece(static_cast<int>(this->added_buffer.length()), l, ADDED);
-    this->added_buffer += textBuffer;
+    Piece newpiece = newPiece(static_cast<int>(added_buffer.length()), l, ADDED);
+    added_buffer += textBuffer;
 
     // piece1 -- newpiece -- piece2
-    this->piece.insert(this->piece.begin() + entry + 1, newpiece);
-    if (piece2.length > 0) this->piece.insert(this->piece.begin() + entry + 2, piece2);
+    pieces.insert(pieces.begin() + entry + 1, newpiece);
+    if (piece2.length > 0) pieces.insert(pieces.begin() + entry + 2, piece2);
 
     if (pushToUndoStack) {
         Operations op = {INSERT, textIndex, l, textBuffer};
@@ -158,42 +156,42 @@ void PieceTable::erasePiece(unsigned long startIndex, unsigned long endIndex, bo
 
     // Identify the piece entries and positions for the start and end of the deletion
     unsigned long e1, p1;
-    if (!this->indexPiece(startIndex, e1, p1)) return;
+    if (!indexPiece(startIndex, e1, p1)) return;
     unsigned long e2, p2;
-    if (!this->indexPiece(endIndex-1, e2, p2)) return;
+    if (!indexPiece(endIndex-1, e2, p2)) return;
     p2 += 1;
 
     // Get text to be deleted
-    std::string buffer = this->getTextInBetween(startIndex, endIndex);
+    std::string buffer = getTextInBetween(startIndex, endIndex);
 
     // First, split the starting piece at p1 and and adjust it
-    Piece left = this->piece[e1];
+    Piece left = pieces[e1];
     Piece right{};
 
     // Check if we need to erase text from more than an entry
     if (e1 == e2) {
         // Split entry into 3 parts to delete middle
         Piece middle{};
-        PieceTable::splitPiece(left, middle, p1, left.type);
-        PieceTable::splitPiece(middle, right, p2 - p1, left.type);
+        splitPiece(left, middle, p1, left.type);
+        splitPiece(middle, right, p2 - p1, left.type);
         // Update the piece table
-        this->piece[e1] = left;
-        if (right.length > 0) this->piece.insert(this->piece.begin() + e1 + 1, right);
+        pieces[e1] = left;
+        if (right.length > 0) pieces.insert(pieces.begin() + e1 + 1, right);
     } else {
         // Split e1 entry to delete right piece
-        PieceTable::splitPiece(left, right, p1, left.type);
-        this->piece[e1] = left;
+        splitPiece(left, right, p1, left.type);
+        pieces[e1] = left;
 
         // Split e2 entry to delete last piece (left piece)
-        Piece last = this->piece[e2];
+        Piece last = pieces[e2];
         Piece remainder{};
-        PieceTable::splitPiece(last, remainder, p2, last.type);
+        splitPiece(last, remainder, p2, last.type);
 
         // Erase all the pieces in between
-        this->piece.erase(this->piece.begin() + e1 + 1, this->piece.begin() + e2 + 1);
+        pieces.erase(pieces.begin() + e1 + 1, pieces.begin() + e2 + 1);
 
         // If there's remaining text after the deletion in the last piece, insert it
-        if (remainder.length > 0) this->piece.insert(this->piece.begin() + e1 + 1, remainder);
+        if (remainder.length > 0) pieces.insert(pieces.begin() + e1 + 1, remainder);
     }
 
     if (pushToUndoStack) {
@@ -215,7 +213,7 @@ void PieceTable::undoPiece()
     auto op = undo_stack.top();
     undo_stack.pop();
     redo_stack.push(op);
-    this->performUndo(op);
+    performUndo(op);
 }
 
 void PieceTable::redoPiece()
@@ -223,7 +221,7 @@ void PieceTable::redoPiece()
     auto op = redo_stack.top();
     redo_stack.pop();
     undo_stack.push(op);
-    this->performRedo(op);
+    performRedo(op);
 }
 
 void PieceTable::performUndo(const Operations& operation) {

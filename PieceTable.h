@@ -48,7 +48,7 @@ class PieceTable {
     private:
         std::string original_buffer;
         std::string added_buffer;
-        std::vector<Piece> piece;
+        std::vector<Piece> pieces;
         std::stack<Operations> undo_stack;
         std::stack<Operations> redo_stack;
         static Piece newPiece(unsigned long startIndex, unsigned long bufferLength, Buffer bufferType);
