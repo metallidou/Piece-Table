@@ -138,6 +138,42 @@ TEST_CASE("Piece Table: delete operation", "[deletion]")
     REQUIRE(p.getText() == text10);
 }
 
+TEST_CASE("Piece Table: replace operation", "[replace]") {
+    std::string text = "abcdef";
+    std::string text1 = "ABcdef";
+    std::string text2 = "AB";
+    std::string text3 = "b";
+    std::string text4 = "Abdef";
+    std::string text5 = "BC";
+    std::string text6 = "ABCdef";
+    std::string text7 = "de";
+    std::string text8 = "";
+    std::string text9 = "ABCf";
+    std::string text10 = "DE";
+    std::string text11 = "ABCDE";
+    PieceTable p(text);
+
+    // "abcdef" -> "ABcdef"
+    p.replacePiece(0, 2, text2);
+    REQUIRE(p.getText() == text1);
+
+    // "ABcdef" -> "Abdef"
+    p.replacePiece(1, 3, text3);
+    REQUIRE(p.getText() == text4);
+
+    // "Abdef" -> "ABCdef"
+    p.replacePiece(1, 2, text5);
+    REQUIRE(p.getText() == text6);
+
+    // "ABCdef" -> "ABCf"
+    p.replacePiece(3, 5, text8);
+    REQUIRE(p.getText() == text9);
+
+    // "ABCf" -> "ABCDE"
+    p.replacePiece(3, 4, text10);
+    REQUIRE(p.getText() == text11);
+}
+
 TEST_CASE("Piece Table: getTextInBetween", "[getTextInBetween]")
 {
     std::string text = "abcdef";

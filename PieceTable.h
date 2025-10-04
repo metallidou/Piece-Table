@@ -37,7 +37,6 @@ class PieceTable {
         std::string getBufferText(const Piece &piece) const;
         static void splitPiece(Piece &piece1, Piece &piece2, unsigned long bufferPosition, Buffer bufferType);
         bool indexPiece(unsigned long bufferIndex, unsigned long &bufferEntry, unsigned long &textPosition) const;
-        unsigned long indexText(unsigned long bufferEntry, unsigned long textPosition) const;
         void insertPiece(unsigned long textIndex, const std::string &textBuffer, bool pushToUndoStack = true);
         void erasePiece(unsigned long startIndex, unsigned long endIndex, bool pushToUndoStack = true);
         void replacePiece(unsigned long startIndex, unsigned long endIndex, const std::string &textBuffer);

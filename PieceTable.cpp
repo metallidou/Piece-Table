@@ -14,11 +14,13 @@ PieceTable::PieceTable(const std::string &textBuffer)
 
 PieceTable::~PieceTable() = default;
 
-std::string PieceTable::getText()
+Piece PieceTable::newPiece(const unsigned long startIndex, const unsigned long bufferLength, Buffer bufferType)
 {
-    std::string text;
-    for (const auto &p : pieces) text += getBufferText(p);
-    return text;
+    Piece newpiece{};
+    newpiece.start = startIndex;
+    newpiece.length = bufferLength;
+    newpiece.type = bufferType;
+    return newpiece;
 }
 
 std::string PieceTable::getBufferText(const Piece &piece) const
@@ -26,6 +28,32 @@ std::string PieceTable::getBufferText(const Piece &piece) const
     const std::string& buffer = (piece.type == ORIGINAL) ? original_buffer : added_buffer;
     if (piece.start >= buffer.size() || piece.length == 0) return "";
     return buffer.substr(piece.start, std::min(piece.length, buffer.size() - piece.start));
+}
+
+std::string PieceTable::getText()
+{
+    std::string text;
+    for (const auto &p : pieces) text += getBufferText(p);
+    return text;
+}
+
+bool PieceTable::indexPiece(unsigned long bufferIndex, unsigned long &bufferEntry, unsigned long &textPosition) const
+{
+    if (pieces.empty()) return false;
+
+    unsigned long pos = 0;
+    for (size_t i = 0; i < pieces.size(); i++) {
+        if (bufferIndex < pos + pieces[i].length) {
+            bufferEntry = i;
+            textPosition = bufferIndex - pos;
+            return true;
+        }
+        pos += pieces[i].length;
+    }
+    // If we reach here, bufferIndex == total length -> append at end
+    bufferEntry = pieces.size() - 1;
+    textPosition = pieces.back().length;
+    return true;
 }
 
 std::string PieceTable::takeSubStringFromPiece(const Piece& piece, unsigned long localStart, unsigned long localLength)
@@ -63,44 +91,6 @@ std::string PieceTable::getTextInBetween(const unsigned long startIndex, const u
     result += takeSubStringFromPiece(pieces[e2], 0, p2);
 
     return result;
-}
-
-Piece PieceTable::newPiece(const unsigned long startIndex, const unsigned long bufferLength, Buffer bufferType)
-{
-    Piece newpiece{};
-    newpiece.start = startIndex;
-    newpiece.length = bufferLength;
-    newpiece.type = bufferType;
-    return newpiece;
-}
-
-bool PieceTable::indexPiece(unsigned long bufferIndex, unsigned long &bufferEntry, unsigned long &textPosition) const
-{
-    if (pieces.empty()) return false;
-
-    unsigned long pos = 0;
-    for (size_t i = 0; i < pieces.size(); i++) {
-        if (bufferIndex < pos + pieces[i].length) {
-            bufferEntry = i;
-            textPosition = bufferIndex - pos;
-            return true;
-        }
-        pos += pieces[i].length;
-    }
-    // If we reach here, bufferIndex == total length -> append at end
-    bufferEntry = pieces.size() - 1;
-    textPosition = pieces.back().length;
-    return true;
-}
-
-unsigned long PieceTable::indexText(unsigned long bufferEntry, unsigned long textPosition) const
-{
-    unsigned long index = 0;
-    unsigned long e = 0;
-
-    while(e < bufferEntry)
-        index += pieces[e++].length;
-    return index + textPosition;
 }
 
 void PieceTable::splitPiece(Piece &piece1, Piece &piece2, unsigned long bufferPosition, Buffer bufferType)
