@@ -8,29 +8,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Compiler options
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O3 -g3")
 
-# Add linker options
+# Linker options
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lm")
 
-# Find Catch2
-find_package(Catch2 REQUIRED)
-
-# List all source files
+# Source files
 set(SOURCES
         PieceTable.cpp
         tests/test.cpp
 )
 
-# Add the executable for the tests
-add_executable(unit_test ${SOURCES})
+# Fetch Catch2 automatically
+include(FetchContent)
+FetchContent_Declare(
+        catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.11.0
+        GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(catch2)
 
-# Link Catch2 to your test executable
+# Build test executable
+add_executable(unit_test ${SOURCES})
 target_link_libraries(unit_test PRIVATE Catch2::Catch2WithMain)
 
-# Include Catch2's CMake configuration
 include(Catch)
 catch_discover_tests(unit_test)
 
-# Add a custom clean target (optional)
+# Clean target
 add_custom_target(my_clean
         COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/unit_test
         COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/CMakeFiles
