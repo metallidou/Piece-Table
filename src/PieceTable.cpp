@@ -7,9 +7,6 @@ PieceTable::PieceTable(const std::string &textBuffer)
     pieces.push_back(newpiece);
     original_buffer = textBuffer;
     added_buffer = "";
-
-    Operations op = {INSERT, 0, textBuffer.length(), textBuffer};
-    undo_stack.push(op);
 }
 
 PieceTable::~PieceTable() = default;
@@ -200,6 +197,8 @@ void PieceTable::replacePiece(unsigned long startIndex, unsigned long endIndex, 
 
 void PieceTable::undoPiece()
 {
+    if (undo_stack.empty()) return;
+
     auto op = undo_stack.top();
     undo_stack.pop();
     redo_stack.push(op);
@@ -208,6 +207,8 @@ void PieceTable::undoPiece()
 
 void PieceTable::redoPiece()
 {
+    if (redo_stack.empty()) return;
+
     auto op = redo_stack.top();
     redo_stack.pop();
     undo_stack.push(op);
