@@ -33,18 +33,6 @@ chmod +x build.sh
 
 ---
 
-## How it works
-
-The Piece Table stores text as a sequence of **pieces**, referencing either the **original buffer** or the **added buffer**.  
-This allows modifications without rewriting the entire text.
-
-Example:
-
-- `[ORIGINAL:0,6]` → 6 characters from the original buffer starting at index 0  
-- `[ADDED:0,2]` → 2 characters from the added buffer starting at index 0  
-
----
-
 ## Usage
 The main program demonstrates basic operations with the Piece table
 ``` c++
