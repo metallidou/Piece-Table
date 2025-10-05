@@ -20,6 +20,5 @@ Run unit tests
 ```
 
 ## Testing
-Unit tests are implemented using <b>Catch2</b>, a modern C++ testing framework, which is simple and efficient. <br />
-[Catch2 – A Modern C++ Unit Testing Framework](https://github.com/catchorg/Catch2)
+Unit tests are implemented using [Catch2](https://github.com/catchorg/Catch2), a modern C++ testing framework, which is simple and efficient. <br />
 
