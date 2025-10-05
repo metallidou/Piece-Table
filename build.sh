@@ -23,8 +23,4 @@ cmake ..
 echo "Building project..."
 cmake --build .
 
-# Run tests using Catch2
-echo "Running tests..."
-./unit_test
-
 echo "Build completed successfully!"

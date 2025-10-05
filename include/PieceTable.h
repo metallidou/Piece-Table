@@ -19,8 +19,7 @@ struct Operations {
 
 enum Buffer {
     ORIGINAL,
-    ADDED,
-    DELETED
+    ADDED
 };
 
 struct Piece {

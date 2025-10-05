@@ -1,5 +1,5 @@
 #include <string>
-#include "PieceTable.h"
+#include "../include/PieceTable.h"
 
 PieceTable::PieceTable(const std::string &textBuffer)
 {
