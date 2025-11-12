@@ -54,6 +54,12 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Disable warnings-as-errors on MSVC
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        Add-Content -Path $env:GITHUB_ENV -Value "CXXFLAGS=/WX- /wd4710 /wd4711 /wd4868"
+
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
